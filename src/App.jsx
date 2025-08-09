@@ -1,6 +1,8 @@
 import './index.css'
 import ModelCanvas from './ModelCanvas'
 import ChatBot from './ChatBot'
+import AudioPlayer from './AudioPlayer'
+import TopRightInfo from './TopRightInfo'
 
 export default function App() {
   return (
@@ -50,7 +52,9 @@ export default function App() {
         </div>
       </div>
       <ModelCanvas />
+      <TopRightInfo />
       <ChatBot />
+      <AudioPlayer />
     </div>
   )
 }

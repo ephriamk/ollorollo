@@ -96,7 +96,7 @@ export default function ModelCanvas() {
         position={[6, 10, 6]}
         angle={0.35}
         penumbra={0.8}
-        intensity={2.2}
+        intensity={2.6}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -105,9 +105,17 @@ export default function ModelCanvas() {
       {/* Fill and rim lights */}
       <directionalLight position={[-6, 4, 2]} intensity={0.6} />
       <directionalLight position={[2, 3, -6]} intensity={0.5} />
+      <directionalLight position={[0, 3, -5]} intensity={0.8} color="#99ccff" />
+
+      {/* Soft ambient from sky/ground */}
+      <hemisphereLight color="#4455ff" groundColor="#0b0b10" intensity={0.45} />
+
+      {/* Accent colored points for galaxy vibe */}
+      <pointLight position={[-3, 1.5, 2]} intensity={1.2} distance={12} decay={2} color="#7aa2ff" />
+      <pointLight position={[3, 2, -1]} intensity={1.1} distance={12} decay={2} color="#ff7ad9" />
 
       {/* Image-based lighting for glossy materials */}
-      <Environment preset="night" environmentIntensity={0.8} />
+      <Environment preset="night" environmentIntensity={1.0} />
 
       <Suspense fallback={null}>
         <Center>
