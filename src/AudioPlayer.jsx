@@ -24,10 +24,9 @@ const fallbackPlaylist = [
   { src: '/song/Ollo the Robot.mp3', title: 'Ollo the Robot' },
 ]
 
-export default function AudioPlayer() {
+export default function AudioPlayer({ isPlaying, onPlayingChange }) {
   const audioRef = useRef(null)
   const [trackIndex, setTrackIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [needsInteraction, setNeedsInteraction] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -93,9 +92,9 @@ export default function AudioPlayer() {
   const onEnded = () => {
     if (trackIndex < playlist.length - 1) {
       setTrackIndex((i) => i + 1)
-      setIsPlaying(true)
+      onPlayingChange(true)
     } else {
-      setIsPlaying(false)
+      onPlayingChange(false)
     }
   }
 
@@ -104,20 +103,20 @@ export default function AudioPlayer() {
     if (!audio) return
     try {
       await audio.play()
-      setIsPlaying(true)
+      onPlayingChange(true)
       setNeedsInteraction(false)
     } catch {
       // remain disabled
     }
   }
 
-  const togglePlay = () => setIsPlaying((p) => !p)
+  const togglePlay = () => onPlayingChange(!isPlaying)
   const stop = () => {
     const audio = audioRef.current
     if (!audio) return
     audio.pause()
     audio.currentTime = 0
-    setIsPlaying(false)
+    onPlayingChange(false)
   }
   const toggleMute = () => setIsMuted((m) => !m)
 
@@ -305,12 +304,19 @@ export default function AudioPlayer() {
           </button>
         </div>
 
-        {/* Track list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Track list (scrollable; only 3 visible at a time) */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          maxHeight: 156, // ~3 items (3 * 44 + 2 * 6 gaps)
+          overflowY: 'auto',
+          paddingRight: 4
+        }}>
           {playlist.map((t, idx) => (
             <button
               key={t.src}
-              onClick={() => { setTrackIndex(idx); setIsPlaying(true) }}
+              onClick={() => { setTrackIndex(idx); onPlayingChange(true) }}
               style={{
                 textAlign: 'left',
                 padding: '8px 10px',
@@ -319,6 +325,9 @@ export default function AudioPlayer() {
                 background: idx === trackIndex ? 'rgba(138,180,255,0.15)' : 'rgba(255,255,255,0.06)',
                 color: 'white',
                 cursor: 'pointer',
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center'
               }}
             >
               {idx + 1}. {t.title}

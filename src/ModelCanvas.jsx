@@ -1,8 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, useGLTF, useFBX, useAnimations, Center, Environment, Stars } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls, useGLTF, useFBX, useAnimations, Center, Environment, Stars, Text3D } from '@react-three/drei'
 import * as THREE from 'three'
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { useControls } from 'leva'
 
 /**
  * Expects:
@@ -10,8 +11,9 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
  *   public/model/dance.fbx
  */
 
-function AnimatedCharacter() {
+function AnimatedCharacter({ onReady }) {
   const groupRef = useRef()
+  const readySignaledRef = useRef(false)
 
   // 1) Load assets
   const gltf = useGLTF('/model/character.glb')
@@ -192,19 +194,66 @@ function AnimatedCharacter() {
     console.debug('[ModelCanvas] GLB clips:', gltf.animations?.map(c => c.name))
   }, [fbx.animations, retargetedClips, gltf.animations])
 
-  return (
-    <group ref={groupRef}>
-      <primitive object={target} />
-    </group>
-  )
+  useFrame(() => {
+    if (!readySignaledRef.current && groupRef.current) {
+      readySignaledRef.current = true
+      try {
+        const box = new THREE.Box3().setFromObject(groupRef.current)
+        const size = new THREE.Vector3()
+        const center = new THREE.Vector3()
+        box.getSize(size)
+        box.getCenter(center)
+        onReady?.({ size, center })
+      } catch {
+        try { onReady?.() } catch {}
+      }
+    }
+  })
+
+  return <group ref={groupRef}><primitive object={target} /></group>
 }
 
 useGLTF.preload('/model/character.glb')
 useFBX.preload('/model/dance.fbx')
 
-export default function ModelCanvas() {
+// Camera controller component that works inside Canvas
+function CameraController() {
+  const { camera, controls } = useThree()
+  
+  const cameraControls = useControls('Camera', {
+    positionX: { value: 0.0, min: -10, max: 10, step: 0.1 },
+    positionY: { value: 5.8, min: -5, max: 10, step: 0.1 },
+    positionZ: { value: 12.9, min: 1, max: 15, step: 0.1 },
+    targetX: { value: 0.4, min: -5, max: 5, step: 0.1 },
+    targetY: { value: -0.9, min: -5, max: 5, step: 0.1 },
+    targetZ: { value: 0.0, min: -5, max: 5, step: 0.1 },
+    fov: { value: 45, min: 10, max: 120, step: 1 }
+  })
+
+  useEffect(() => {
+    camera.position.set(cameraControls.positionX, cameraControls.positionY, cameraControls.positionZ)
+    camera.fov = cameraControls.fov
+    camera.updateProjectionMatrix()
+  }, [camera, cameraControls.positionX, cameraControls.positionY, cameraControls.positionZ, cameraControls.fov])
+
+  useEffect(() => {
+    if (controls) {
+      controls.target.set(cameraControls.targetX, cameraControls.targetY, cameraControls.targetZ)
+      controls.update()
+    }
+  }, [controls, cameraControls.targetX, cameraControls.targetY, cameraControls.targetZ])
+
+  return null
+}
+
+export default function ModelCanvas({ onModelReady, isMusicPlaying = false }) {
   return (
-    <Canvas camera={{ position: [0, 1.2, 3.5], fov: 45 }} shadows>
+    <Canvas 
+      camera={{ position: [0.0, 5.8, 12.9], fov: 45 }} 
+      shadows
+    >
+      <CameraController />
+      
       <color attach="background" args={['#02030f']} />
 
       {/* Key light with soft shadows */}
@@ -233,10 +282,58 @@ export default function ModelCanvas() {
       {/* Image-based lighting */}
       <Environment preset="night" intensity={1.0} />
 
-      <Suspense fallback={null}>
-        <Center>
-          <AnimatedCharacter />
-        </Center>
+                        <Suspense fallback={null}>
+                    <Center position={[0, 0, 1]}>
+                      <AnimatedCharacter onReady={() => onModelReady?.()} />
+                    </Center>
+
+                            {/* 3D title above the character (excluded from Bounds so it doesn't affect framing) */}
+                    <Center position={[0, 2.2, 0]}>
+                      <group>
+                        <Text3D
+                          font={"/song/DarkNet_Regular.json"}
+                          size={0.6}
+                          height={0.12}
+                          curveSegments={16}
+                          bevelEnabled
+                          bevelThickness={0.03}
+                          bevelSize={0.015}
+                          bevelSegments={2}
+                          letterSpacing={-0.02}
+                          lineHeight={0.8}
+                        >
+                          Ollo{'\n'}CoPilot{'\n'}Companion
+                          <meshStandardMaterial 
+                            color={isMusicPlaying ? "#ff6b6b" : "#ffffff"} 
+                            emissive={isMusicPlaying ? "#ff8e53" : "#66ccff"} 
+                            emissiveIntensity={isMusicPlaying ? 3.0 : 2.2} 
+                          />
+                        </Text3D>
+                        {/* Faux glow layer */}
+                        <Text3D
+                          font={"/song/DarkNet_Regular.json"}
+                          size={0.6}
+                          height={0.12}
+                          curveSegments={16}
+                          bevelEnabled
+                          bevelThickness={0.03}
+                          bevelSize={0.015}
+                          bevelSegments={2}
+                          letterSpacing={-0.02}
+                          lineHeight={0.8}
+                          scale={[1.035, 1.035, 1.035]}
+                        >
+                          Ollo{'\n'}CoPilot{'\n'}Companion
+                          <meshBasicMaterial 
+                            color={isMusicPlaying ? "#ff8e53" : "#66ccff"} 
+                            transparent 
+                            opacity={isMusicPlaying ? 0.4 : 0.28} 
+                            blending={THREE.AdditiveBlending} 
+                            depthWrite={false} 
+                          />
+                        </Text3D>
+                      </group>
+                    </Center>
 
         {/* Background stars */}
         <Stars
@@ -250,7 +347,11 @@ export default function ModelCanvas() {
         />
       </Suspense>
 
-      <OrbitControls enableDamping makeDefault />
+      <OrbitControls 
+        enableDamping 
+        makeDefault 
+        target={[0.4, -0.9, 0.0]}
+      />
     </Canvas>
   )
 }
