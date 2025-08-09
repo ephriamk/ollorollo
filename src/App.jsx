@@ -1,5 +1,6 @@
 import './index.css'
 import ModelCanvas from './ModelCanvas'
+import ChatBot from './ChatBot'
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
         </div>
       </div>
       <ModelCanvas />
+      <ChatBot />
     </div>
   )
 }
