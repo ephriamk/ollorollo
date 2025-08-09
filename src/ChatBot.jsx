@@ -84,13 +84,17 @@ export default function ChatBot() {
           backdropFilter: 'blur(8px)',
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 14,
-          width: 340,
-          height: isOpen ? 450 : 54,
+          width: 360,
+          maxWidth: 'calc(100vw - 36px)',
+          height: isOpen ? 480 : 54,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
           transition: 'height 160ms ease, box-shadow 160ms ease',
           boxShadow: '0 20px 60px rgba(0,0,0,0.45)'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ flex: 1, color: 'white', fontWeight: 700, letterSpacing: '0.08em' }}>
             Ollo Chat
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>
@@ -126,7 +130,7 @@ export default function ChatBot() {
         </div>
 
         {showSettings && (
-          <div style={{ padding: '0 12px 10px 12px' }}>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
             <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginBottom: 6 }}>
               Enter your OpenAI API key (stored locally in your browser)
             </div>
@@ -165,12 +169,18 @@ export default function ChatBot() {
 
         {isOpen && (
           <>
+            {!effectiveKey && (
+              <div style={{ margin: '10px 12px 0 12px', padding: '8px 10px', borderRadius: 10, background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.35)', color: '#fde68a', fontSize: 12 }}>
+                No API key set. Click “Key” above to add and save your OpenAI API key.
+              </div>
+            )}
             <div
               ref={listRef}
               style={{
-                height: 320,
+                flex: 1,
+                minHeight: 0,
                 overflowY: 'auto',
-                padding: '8px 12px 0 12px',
+                padding: '8px 12px',
               }}
             >
               {messages.map((m, i) => (
@@ -193,7 +203,7 @@ export default function ChatBot() {
                 </div>
               ))}
             </div>
-            <form onSubmit={sendMessage} style={{ padding: 12, display: 'flex', gap: 8 }}>
+            <form onSubmit={sendMessage} style={{ padding: 12, display: 'flex', gap: 8, borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

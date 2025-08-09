@@ -1,6 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-const playlist = [
+// Prefer dynamic discovery from src/assets/songs using Vite's glob import.
+// Fallback to public/song for the two known tracks.
+const discovered = import.meta.glob('/src/assets/songs/**/*.{mp3,ogg,wav}', {
+  eager: true,
+  import: 'default',
+})
+
+function buildDiscoveredPlaylist() {
+  const entries = Object.entries(discovered)
+  return entries
+    .map(([path, url]) => {
+      const file = path.split('/').pop() || ''
+      const base = file.replace(/\.[^.]+$/, '')
+      const title = base.replace(/[_-]+/g, ' ')
+      return { src: url, title }
+    })
+    .sort((a, b) => a.title.localeCompare(b.title))
+}
+
+const fallbackPlaylist = [
   { src: '/song/Ollo the Botto.mp3', title: 'Ollo the Botto' },
   { src: '/song/Ollo the Robot.mp3', title: 'Ollo the Robot' },
 ]
@@ -13,8 +32,36 @@ export default function AudioPlayer() {
   const [needsInteraction, setNeedsInteraction] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [playlist, setPlaylist] = useState(() => {
+    const discoveredList = buildDiscoveredPlaylist()
+    return discoveredList.length > 0 ? discoveredList : fallbackPlaylist
+  })
 
   const current = playlist[trackIndex]
+
+  // Try to load manifest from public/song/index.json so new files in public are picked up
+  useEffect(() => {
+    let cancelled = false
+    async function loadManifest() {
+      try {
+        const resp = await fetch('/song/index.json', { cache: 'no-store' })
+        if (!resp.ok) return
+        const files = await resp.json()
+        if (!Array.isArray(files)) return
+        const fromManifest = files
+          .filter((f) => typeof f === 'string' && /\.(mp3|ogg|wav)$/i.test(f))
+          .map((f) => ({ src: `/song/${f}`, title: (f.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ')) }))
+        if (!cancelled && fromManifest.length > 0) {
+          setPlaylist(fromManifest)
+          setTrackIndex(0)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    loadManifest()
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -25,7 +72,7 @@ export default function AudioPlayer() {
     if (isPlaying) {
       audio.play().catch(() => setNeedsInteraction(true))
     }
-  }, [trackIndex])
+  }, [trackIndex, current?.src])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -130,7 +177,38 @@ export default function AudioPlayer() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ fontWeight: 700, letterSpacing: '0.06em' }}>{current.title}</div>
-          <div style={{ fontSize: 12, opacity: 0.8 }}>{trackIndex + 1} / {playlist.length}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => {
+                // manual refresh of manifest
+                fetch('/song/index.json', { cache: 'no-store' })
+                  .then((r) => r.ok ? r.json() : [])
+                  .then((files) => {
+                    if (!Array.isArray(files)) return
+                    const list = files
+                      .filter((f) => typeof f === 'string' && /\.(mp3|ogg|wav)$/i.test(f))
+                      .map((f) => ({ src: `/song/${f}`, title: (f.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ')) }))
+                    if (list.length > 0) {
+                      setPlaylist(list)
+                      setTrackIndex(0)
+                    }
+                  })
+                  .catch(() => {})
+              }}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'rgba(255,255,255,0.06)',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              Refresh
+            </button>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{trackIndex + 1} / {playlist.length}</div>
+          </div>
         </div>
 
         {/* Progress */}
